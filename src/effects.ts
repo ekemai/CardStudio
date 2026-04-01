@@ -3,6 +3,7 @@ export interface EffectsSettings {
   float: boolean
   shimmer: boolean
   edgeHighlight: boolean
+  grain: number
 }
 
 export const DEFAULT_EFFECTS: EffectsSettings = {
@@ -10,4 +11,5 @@ export const DEFAULT_EFFECTS: EffectsSettings = {
   float: true,
   shimmer: true,
   edgeHighlight: true,
+  grain: 0.15,
 }

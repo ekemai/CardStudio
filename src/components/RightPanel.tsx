@@ -267,6 +267,17 @@ const RightPanel: React.FC<RightPanelProps> = ({
           <Toggle label="Float Animation" value={effects.float} onChange={v => onEffects({ ...effects, float: v })} />
           <Toggle label="Shimmer Sweep" value={effects.shimmer} onChange={v => onEffects({ ...effects, shimmer: v })} />
           <Toggle label="Metallic Edge" value={effects.edgeHighlight} onChange={v => onEffects({ ...effects, edgeHighlight: v })} />
+
+          <div className="mt-2 border-t border-white/5 pt-3">
+            <Slider
+              label="Grain"
+              value={effects.grain}
+              min={0}
+              max={1}
+              step={0.01}
+              onChange={v => onEffects({ ...effects, grain: v })}
+            />
+          </div>
         </div>
       </div>
 

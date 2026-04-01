@@ -1,36 +1,82 @@
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Canvas, ThreeEvent, useFrame } from '@react-three/fiber'
+import { Canvas, ThreeEvent, useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls, Environment } from '@react-three/drei'
 import { animated, useSpring } from '@react-spring/three'
+import { EffectComposer, Bloom, Vignette, ChromaticAberration, SMAA, Noise } from '@react-three/postprocessing'
+import { BlendFunction } from 'postprocessing'
 import * as THREE from 'three'
+import { RectAreaLightUniformsLib } from 'three/addons/lights/RectAreaLightUniformsLib.js'
 import { PRESETS } from '../presets'
 import { MaterialSettings } from '../materials'
 import { LightingSettings } from '../lighting'
 import { EffectsSettings } from '../effects'
 import { BackgroundSettings } from '../background'
 
+// Initialise RectAreaLight support
+RectAreaLightUniformsLib.init()
+
 const CARD_WIDTH = 1.586
 const CARD_HEIGHT = 1
-const CARD_DEPTH = 0.014
-const CORNER_RADIUS = 0.045
+const CARD_DEPTH = 0.03
+const CORNER_RADIUS = 0.04
 
-// Shadow texture — extremely diffused, no hard edges at all
+// ── Procedural micro-texture normal map ──────────────────────────────
+const normalMapTexture = (() => {
+  const size = 512
+  const canvas = document.createElement('canvas')
+  canvas.width = size
+  canvas.height = size
+  const ctx = canvas.getContext('2d')!
+  const imageData = ctx.createImageData(size, size)
+  const d = imageData.data
+  for (let i = 0; i < d.length; i += 4) {
+    const nx = 128 + (Math.random() - 0.5) * 8
+    const ny = 128 + (Math.random() - 0.5) * 8
+    d[i] = nx
+    d[i + 1] = ny
+    d[i + 2] = 255
+    d[i + 3] = 255
+  }
+  ctx.putImageData(imageData, 0, 0)
+  const tex = new THREE.CanvasTexture(canvas)
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping
+  tex.repeat.set(4, 4)
+  return tex
+})()
+
+// ── Procedural bump map (fine grain) ─────────────────────────────────
+const bumpMapTexture = (() => {
+  const size = 256
+  const canvas = document.createElement('canvas')
+  canvas.width = size
+  canvas.height = size
+  const ctx = canvas.getContext('2d')!
+  const imageData = ctx.createImageData(size, size)
+  const d = imageData.data
+  for (let i = 0; i < d.length; i += 4) {
+    const v = 128 + (Math.random() - 0.5) * 30
+    d[i] = d[i + 1] = d[i + 2] = v
+    d[i + 3] = 255
+  }
+  ctx.putImageData(imageData, 0, 0)
+  const tex = new THREE.CanvasTexture(canvas)
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping
+  tex.repeat.set(4, 4)
+  return tex
+})()
+
+// ── Shadow texture — extremely diffused, no hard edges ───────────────
 const shadowTexture = (() => {
   const size = 512
   const canvas = document.createElement('canvas')
   canvas.width = size
   canvas.height = size
   const ctx = canvas.getContext('2d')!
-
-  // Pure radial gradient — no shape drawing, just a soft oval blob
   const cx = size / 2
-  const cy = size / 2
   const rx = size * 0.32
   const ry = rx / 1.586
-
-  // Elliptical gradient via scale transform
   ctx.save()
-  ctx.translate(cx, cy)
+  ctx.translate(cx, cx)
   ctx.scale(1, ry / rx)
   const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, rx)
   grad.addColorStop(0, 'rgba(0,0,0,0.45)')
@@ -41,7 +87,6 @@ const shadowTexture = (() => {
   ctx.fillStyle = grad
   ctx.fillRect(-size, -size, size * 2, size * 2)
   ctx.restore()
-
   const tex = new THREE.CanvasTexture(canvas)
   return tex
 })()
@@ -78,7 +123,6 @@ const backGradient = (() => {
   return tex
 })()
 
-
 function makeRoundedRectShape() {
   const w = CARD_WIDTH / 2
   const h = CARD_HEIGHT / 2
@@ -112,7 +156,6 @@ const cardBodyGeo = (() => {
 const cardFaceGeo = (() => {
   const shape = makeRoundedRectShape()
   const geo = new THREE.ShapeGeometry(shape, 8)
-  // Fix UVs to map 0-1 across the full card dimensions
   const uv = geo.attributes.uv
   const pos = geo.attributes.position
   for (let i = 0; i < uv.count; i++) {
@@ -147,32 +190,64 @@ function CardMesh({
   mat: MaterialSettings
   edgeHighlight?: { intensity: number; color: string }
 }) {
+  const bodyRef = useRef<THREE.Mesh>(null)
+  const frontRef = useRef<THREE.Mesh>(null)
+  const backRef = useRef<THREE.Mesh>(null)
+
+  // Dispose materials on unmount
+  useEffect(() => {
+    return () => {
+      if (bodyRef.current) (bodyRef.current.material as THREE.Material).dispose()
+      if (frontRef.current) (frontRef.current.material as THREE.Material).dispose()
+      if (backRef.current) (backRef.current.material as THREE.Material).dispose()
+    }
+  }, [])
+
   return (
     <group>
-      <mesh geometry={cardBodyGeo}>
+      {/* Card body / edges — higher metalness for realistic edge reflections */}
+      <mesh ref={bodyRef} geometry={cardBodyGeo} castShadow receiveShadow>
         <meshPhysicalMaterial
           {...mat}
           color={edgeHighlight ? edgeHighlight.color : '#888888'}
           emissive={edgeHighlight ? edgeHighlight.color : '#000000'}
           emissiveIntensity={edgeHighlight ? edgeHighlight.intensity * 0.3 : 0}
-          metalness={edgeHighlight ? Math.min(mat.metalness + edgeHighlight.intensity * 0.3, 1) : mat.metalness}
-          roughness={edgeHighlight ? Math.max(mat.roughness - edgeHighlight.intensity * 0.2, 0) : mat.roughness}
+          metalness={Math.min((edgeHighlight ? mat.metalness + edgeHighlight.intensity * 0.3 : mat.metalness) + 0.15, 1)}
+          roughness={edgeHighlight ? Math.max(mat.roughness - edgeHighlight.intensity * 0.2, 0) : mat.roughness * 0.8}
+          normalMap={normalMapTexture}
+          normalScale={new THREE.Vector2(0.08, 0.08)}
+          bumpMap={bumpMapTexture}
+          bumpScale={0.003}
+          envMapIntensity={1.2}
+          anisotropy={4}
         />
       </mesh>
 
-      <mesh geometry={cardFaceGeo} position={[0, 0, FACE_Z]}>
+      {/* Front face */}
+      <mesh ref={frontRef} geometry={cardFaceGeo} position={[0, 0, FACE_Z]} castShadow>
         <meshPhysicalMaterial
           {...mat}
           map={frontTex}
           color={frontTex ? '#ffffff' : '#888888'}
+          normalMap={normalMapTexture}
+          normalScale={new THREE.Vector2(0.04, 0.04)}
+          bumpMap={bumpMapTexture}
+          bumpScale={0.002}
+          envMapIntensity={1.2}
         />
       </mesh>
 
-      <mesh geometry={cardFaceGeo} position={[0, 0, -FACE_Z]} rotation={[0, Math.PI, 0]}>
+      {/* Back face */}
+      <mesh ref={backRef} geometry={cardFaceGeo} position={[0, 0, -FACE_Z]} rotation={[0, Math.PI, 0]} castShadow>
         <meshPhysicalMaterial
           {...mat}
           map={backTex ?? backGradient}
           color={backTex ? '#ffffff' : '#888888'}
+          normalMap={normalMapTexture}
+          normalScale={new THREE.Vector2(0.04, 0.04)}
+          bumpMap={bumpMapTexture}
+          bumpScale={0.002}
+          envMapIntensity={1.2}
         />
       </mesh>
     </group>
@@ -213,9 +288,7 @@ function ShimmerLight({ paused }: { paused: boolean }) {
     lightRef.current.intensity = 1.0 * brightness
   })
 
-  return (
-    <directionalLight ref={lightRef} color="#ffffff" intensity={1.0} />
-  )
+  return <directionalLight ref={lightRef} color="#ffffff" intensity={1.0} />
 }
 
 function FloatWrapper({
@@ -237,7 +310,6 @@ function FloatWrapper({
 
   return <group ref={groupRef}>{children}</group>
 }
-
 
 function CreditCard({ frontImage, backImage, activePreset, material, effects, paused, transparent }: CreditCardProps) {
   const frontTex = useDataTexture(frontImage)
@@ -293,27 +365,140 @@ function CreditCard({ frontImage, backImage, activePreset, material, effects, pa
   )
 }
 
-function angleToPosition(angle: number, height: number, radius: number): [number, number, number] {
-  const rad = (angle * Math.PI) / 180
-  return [Math.cos(rad) * radius, height, Math.sin(rad) * radius]
-}
+// ── Studio Lighting with RectAreaLights ──────────────────────────────
 
-function Lighting({ settings }: { settings: LightingSettings }) {
-  const keyPos = angleToPosition(settings.key.angle, settings.key.height, 5)
-  const fillPos = angleToPosition(settings.fill.angle, settings.fill.height, 5)
-  const rimPos: [number, number, number] = [0, settings.rim.height, -5]
+function StudioLighting({ settings }: { settings: LightingSettings }) {
+  const keyRef = useRef<THREE.RectAreaLight>(null)
+  const fillRef = useRef<THREE.RectAreaLight>(null)
+  const rimRef = useRef<THREE.RectAreaLight>(null)
+  const spotRef = useRef<THREE.SpotLight>(null)
+
+  // Dispose lights on unmount
+  useEffect(() => {
+    return () => {
+      keyRef.current?.dispose()
+      fillRef.current?.dispose()
+      rimRef.current?.dispose()
+      spotRef.current?.dispose()
+    }
+  }, [])
 
   return (
     <>
-      <ambientLight intensity={settings.ambientIntensity} />
-      <directionalLight position={keyPos} intensity={settings.key.intensity} color={settings.key.color} />
-      <directionalLight position={fillPos} intensity={settings.fill.intensity} color={settings.fill.color} />
-      <directionalLight position={rimPos} intensity={settings.rim.intensity} color={settings.rim.color} />
-      {settings.envMap && <Environment preset="studio" />}
+      <ambientLight intensity={settings.ambientIntensity * 0.5} />
+
+      {/* Main studio panel — large soft key light above and in front */}
+      <rectAreaLight
+        ref={keyRef}
+        color={settings.key.color}
+        intensity={settings.key.intensity * 3}
+        width={4}
+        height={3}
+        position={[1, settings.key.height, 4]}
+        rotation={[-0.3, 0.2, 0]}
+      />
+
+      {/* Fill panel — smaller, from the left */}
+      <rectAreaLight
+        ref={fillRef}
+        color={settings.fill.color}
+        intensity={settings.fill.intensity * 2}
+        width={2}
+        height={2}
+        position={[-3, settings.fill.height, 2]}
+        rotation={[0, 0.8, 0]}
+      />
+
+      {/* Rim / edge separation — thin panel behind */}
+      <rectAreaLight
+        ref={rimRef}
+        color={settings.rim.color}
+        intensity={settings.rim.intensity * 2}
+        width={5}
+        height={0.5}
+        position={[0, settings.rim.height, -3]}
+        rotation={[0, Math.PI, 0]}
+      />
+
+      {/* SpotLight for sharp contact shadows */}
+      <spotLight
+        ref={spotRef}
+        color="#ffffff"
+        intensity={1.5}
+        position={[1, 5, 3]}
+        angle={0.4}
+        penumbra={0.8}
+        castShadow
+        shadow-mapSize-width={1024}
+        shadow-mapSize-height={1024}
+        shadow-bias={-0.0001}
+        shadow-radius={4}
+      />
+
+      {/* Environment map for reflections */}
+      {settings.envMap && <Environment preset="studio" background={false} />}
     </>
   )
 }
 
+// ── Shadow-catching ground plane ─────────────────────────────────────
+
+function ShadowCatcher({ visible }: { visible: boolean }) {
+  if (!visible) return null
+  return (
+    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.8, 0]} receiveShadow>
+      <planeGeometry args={[10, 10]} />
+      <shadowMaterial opacity={0.15} />
+    </mesh>
+  )
+}
+
+// ── Post-processing effects ──────────────────────────────────────────
+
+const chromaticOffset = new THREE.Vector2(0.0005, 0.0005)
+
+function PostEffects({ grain }: { grain: number }) {
+  return (
+    <EffectComposer multisampling={0}>
+      <SMAA />
+      <Bloom
+        intensity={0.4}
+        luminanceThreshold={0.9}
+        luminanceSmoothing={0.4}
+        mipmapBlur
+      />
+      <Vignette
+        offset={0.3}
+        darkness={0.5}
+        blendFunction={BlendFunction.NORMAL}
+      />
+      <ChromaticAberration
+        offset={chromaticOffset}
+        radialModulation={false}
+        modulationOffset={0.0}
+      />
+      <Noise
+        premultiply
+        blendFunction={BlendFunction.MULTIPLY}
+        opacity={grain}
+      />
+    </EffectComposer>
+  )
+}
+
+// ── Renderer configuration ───────────────────────────────────────────
+
+function RendererConfig() {
+  const { gl } = useThree()
+  useEffect(() => {
+    gl.shadowMap.enabled = true
+    gl.shadowMap.type = THREE.PCFSoftShadowMap
+    gl.toneMappingExposure = 1.2
+  }, [gl])
+  return null
+}
+
+// ── Background ───────────────────────────────────────────────────────
 
 function useGradientTexture(start: string, end: string, angle: number, midpoint: number) {
   return useMemo(() => {
@@ -347,7 +532,6 @@ function useGradientTexture(start: string, end: string, angle: number, midpoint:
 function SceneBackground({ settings }: { settings: BackgroundSettings }) {
   const gradTex = useGradientTexture(settings.gradientStart, settings.gradientEnd, settings.gradientAngle, settings.gradientMidpoint)
 
-  // Transparent — no 3D background at all, CSS checkerboard shows through canvas
   if (settings.mode === 'transparent') return null
 
   if (settings.mode === 'gradient') {
@@ -391,6 +575,8 @@ function ResetPlane({ onReset }: { onReset: () => void }) {
   )
 }
 
+// ── Main Viewport component ──────────────────────────────────────────
+
 interface ViewportProps {
   frontImage: string | null
   backImage: string | null
@@ -432,11 +618,13 @@ const Viewport: React.FC<ViewportProps> = ({ frontImage, backImage, activePreset
             alpha: true,
             preserveDrawingBuffer: true,
           }}
+          shadows
           camera={{ position: [0, 0, 3], fov: 40 }}
         >
+          <RendererConfig />
           <SceneColorManager settings={background} />
           <SceneBackground settings={background} />
-          <Lighting settings={lighting} />
+          <StudioLighting settings={lighting} />
           <CreditCard
             frontImage={frontImage}
             backImage={backImage}
@@ -446,8 +634,10 @@ const Viewport: React.FC<ViewportProps> = ({ frontImage, backImage, activePreset
             paused={paused}
             transparent={isTransparent}
           />
+          <ShadowCatcher visible={!isTransparent} />
           <ResetPlane onReset={handleReset} />
           <OrbitControls key={resetKey} enablePan={false} />
+          <PostEffects grain={effects.grain} />
         </Canvas>
       </Suspense>
 
