@@ -2,7 +2,6 @@ import { useCallback, useRef } from 'react'
 import { MaterialSettings, MATERIAL_PRESETS } from '../materials'
 import { LightingSettings } from '../lighting'
 import { EffectsSettings } from '../effects'
-import { DeviceMode } from '../modes'
 
 interface SliderProps {
   label: string
@@ -142,8 +141,6 @@ function Toggle({
 
 // ── Export helpers ────────────────────────────────────────────────────
 
-const RESOLUTIONS = [1, 2, 3, 4] as const
-
 function exportCardPng(activePreset: string) {
   const canvas = document.querySelector('canvas')
   if (!canvas) return
@@ -153,16 +150,9 @@ function exportCardPng(activePreset: string) {
   link.click()
 }
 
-function exportPhonePng(scale: number) {
-  const canvas = document.querySelector('main canvas') as HTMLCanvasElement & { __exportPhone?: (s: number) => void } | null
-  if (!canvas?.__exportPhone) return
-  canvas.__exportPhone(scale)
-}
-
 // ── Main component ───────────────────────────────────────────────────
 
 interface RightPanelProps {
-  mode: DeviceMode
   material: MaterialSettings
   onMaterial: (m: MaterialSettings) => void
   lighting: LightingSettings
@@ -170,15 +160,9 @@ interface RightPanelProps {
   effects: EffectsSettings
   onEffects: (e: EffectsSettings) => void
   activePreset: string
-  activeMockup: string
-  glassReflection: boolean
-  onGlassReflection: (v: boolean) => void
-  screenGlow: boolean
-  onScreenGlow: (v: boolean) => void
 }
 
 const RightPanel: React.FC<RightPanelProps> = ({
-  mode,
   material,
   onMaterial,
   lighting,
@@ -186,10 +170,6 @@ const RightPanel: React.FC<RightPanelProps> = ({
   effects,
   onEffects,
   activePreset,
-  glassReflection,
-  onGlassReflection,
-  screenGlow,
-  onScreenGlow,
 }) => {
   const updateMat = useCallback(
     (key: keyof MaterialSettings, value: number) => {
@@ -208,10 +188,8 @@ const RightPanel: React.FC<RightPanelProps> = ({
   return (
     <aside className="flex w-72 shrink-0 flex-col gap-6 border-l border-white/10 bg-app-sidebar p-6 overflow-y-auto">
 
-      {/* ── Card: Material ── */}
-      {mode === 'card' && (
-        <>
-          <div>
+      {/* ── Material ── */}
+      <div>
             <span className="text-xs font-medium uppercase tracking-wider text-zinc-400">
               Material
             </span>
@@ -232,15 +210,11 @@ const RightPanel: React.FC<RightPanelProps> = ({
               <Slider label="Clearcoat" value={material.clearcoat} min={0} max={1} onChange={v => updateMat('clearcoat', v)} />
               <Slider label="Iridescence" value={material.iridescence} min={0} max={1} onChange={v => updateMat('iridescence', v)} />
             </div>
-          </div>
-          <div className="border-t border-white/5" />
-        </>
-      )}
+      </div>
+      <div className="border-t border-white/5" />
 
-      {/* ── Card: Lighting ── */}
-      {mode === 'card' && (
-        <>
-          <div>
+      {/* ── Lighting ── */}
+      <div>
             <span className="text-xs font-medium uppercase tracking-wider text-zinc-400">
               Lighting
             </span>
@@ -256,32 +230,19 @@ const RightPanel: React.FC<RightPanelProps> = ({
               <Slider label="Ambient" value={lighting.ambientIntensity} min={0} max={1} onChange={v => onLighting({ ...lighting, ambientIntensity: v })} />
               <Toggle label="Environment Map" value={lighting.envMap} onChange={v => onLighting({ ...lighting, envMap: v })} />
             </div>
-          </div>
-          <div className="border-t border-white/5" />
-        </>
-      )}
+      </div>
+      <div className="border-t border-white/5" />
 
-      {/* ── Effects (shared + mode-specific) ── */}
+      {/* ── Effects ── */}
       <div>
         <span className="text-xs font-medium uppercase tracking-wider text-zinc-400">
           Effects
         </span>
         <div className="mt-3 flex flex-col gap-2">
-          {mode === 'card' && (
-            <>
-              <Toggle label="Drop Shadow" value={effects.dropShadow} onChange={v => onEffects({ ...effects, dropShadow: v })} />
-              <Toggle label="Float Animation" value={effects.float} onChange={v => onEffects({ ...effects, float: v })} />
-              <Toggle label="Shimmer Sweep" value={effects.shimmer} onChange={v => onEffects({ ...effects, shimmer: v })} />
-              <Toggle label="Metallic Edge" value={effects.edgeHighlight} onChange={v => onEffects({ ...effects, edgeHighlight: v })} />
-            </>
-          )}
-
-          {mode === 'phone' && (
-            <>
-              <Toggle label="Glass Reflection" value={glassReflection} onChange={onGlassReflection} />
-              <Toggle label="Screen Glow" value={screenGlow} onChange={onScreenGlow} />
-            </>
-          )}
+          <Toggle label="Drop Shadow" value={effects.dropShadow} onChange={v => onEffects({ ...effects, dropShadow: v })} />
+          <Toggle label="Float Animation" value={effects.float} onChange={v => onEffects({ ...effects, float: v })} />
+          <Toggle label="Shimmer Sweep" value={effects.shimmer} onChange={v => onEffects({ ...effects, shimmer: v })} />
+          <Toggle label="Metallic Edge" value={effects.edgeHighlight} onChange={v => onEffects({ ...effects, edgeHighlight: v })} />
 
           <div className="mt-2 border-t border-white/5 pt-3">
             <Slider
@@ -299,36 +260,15 @@ const RightPanel: React.FC<RightPanelProps> = ({
       <div className="border-t border-white/5" />
 
       {/* ── Export ── */}
-      {mode === 'card' && (
-        <button
-          onClick={() => exportCardPng(activePreset)}
-          className="flex items-center justify-center gap-2 rounded-lg border border-indigo-500/30 bg-indigo-500/10 py-2.5 text-xs font-medium text-indigo-300 transition-colors hover:bg-indigo-500/20 hover:text-indigo-200"
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-4 w-4">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-          </svg>
-          Download PNG
-        </button>
-      )}
-
-      {mode === 'phone' && (
-        <div className="flex flex-col gap-2">
-          <span className="text-xs font-medium uppercase tracking-wider text-zinc-400">
-            Export
-          </span>
-          <div className="flex gap-1.5">
-            {RESOLUTIONS.map(s => (
-              <button
-                key={s}
-                onClick={() => exportPhonePng(s)}
-                className="flex-1 rounded-md border border-indigo-500/30 bg-indigo-500/10 py-2 text-[11px] font-medium text-indigo-300 transition-colors hover:bg-indigo-500/20 hover:text-indigo-200"
-              >
-                {s}x
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
+      <button
+        onClick={() => exportCardPng(activePreset)}
+        className="flex items-center justify-center gap-2 rounded-lg border border-indigo-500/30 bg-indigo-500/10 py-2.5 text-xs font-medium text-indigo-300 transition-colors hover:bg-indigo-500/20 hover:text-indigo-200"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-4 w-4">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        </svg>
+        Download PNG
+      </button>
     </aside>
   )
 }

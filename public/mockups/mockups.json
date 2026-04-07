@@ -1,0 +1,104 @@
+{
+  "mockups": [
+    {
+      "id": "floating-iphone",
+      "name": "Floating iPhone",
+      "description": "Floating iPhone mockup with clean minimal styling",
+      "screens": 1,
+      "tags": ["iPhone", "Minimal", "Single"],
+      "thumbnail": "/mockups/thumbs/floating-iphone.jpg",
+      "psd": "/mockups/psds/floating-iphone.psd",
+      "fileSize": "96MB",
+      "featured": false,
+      "screenRegion": [[0.3083, 0.305], [0.482, 0.1674], [0.6979, 0.6848], [0.5277, 0.828]]
+    },
+    {
+      "id": "iphone-hand-1",
+      "name": "iPhone Hand #1",
+      "description": "Hand holding iPhone 16 Pro with minimal clean look",
+      "screens": 1,
+      "tags": ["iPhone", "Minimal", "With Hand"],
+      "thumbnail": "/mockups/thumbs/iphone-hand-1.jpg",
+      "psd": "/mockups/psds/iphone-hand-1.psd",
+      "fileSize": "78MB",
+      "featured": false
+    },
+    {
+      "id": "iphone-hand-2",
+      "name": "iPhone Hand #2",
+      "description": "Hand holding iPhone with artistic silhouette styling",
+      "screens": 1,
+      "tags": ["iPhone", "Artistic", "With Hand"],
+      "thumbnail": "/mockups/thumbs/iphone-hand-2.jpg",
+      "psd": "/mockups/psds/iphone-hand-2.psd",
+      "fileSize": "38MB",
+      "featured": false
+    },
+    {
+      "id": "double-iphone-1",
+      "name": "Double iPhone #1",
+      "description": "Two iPhones side by side with minimal clean styling",
+      "screens": 2,
+      "tags": ["iPhone", "Minimal", "Double"],
+      "thumbnail": "/mockups/thumbs/double-iphone-1.jpg",
+      "psd": "/mockups/psds/double-iphone-1.psd",
+      "fileSize": "52MB",
+      "featured": false
+    },
+    {
+      "id": "artistic-iphone-1",
+      "name": "Artistic iPhone #1",
+      "description": "iPhone with artistic creative styling and bold composition",
+      "screens": 1,
+      "tags": ["iPhone", "Artistic", "Single"],
+      "thumbnail": "/mockups/thumbs/artistic-iphone-1.jpg",
+      "psd": "/mockups/psds/artistic-iphone-1.psd",
+      "fileSize": "159MB",
+      "featured": false
+    },
+    {
+      "id": "artistic-iphone-2",
+      "name": "Artistic iPhone #2",
+      "description": "iPhone with artistic creative styling and reflective surface",
+      "screens": 1,
+      "tags": ["iPhone", "Artistic", "Minimal", "Single"],
+      "thumbnail": "/mockups/thumbs/artistic-iphone-2.jpg",
+      "psd": "/mockups/psds/artistic-iphone-2.psd",
+      "fileSize": "288MB",
+      "featured": false
+    },
+    {
+      "id": "artistic-iphone-3",
+      "name": "Artistic iPhone #3",
+      "description": "iPhone leaning on chair with artistic creative styling",
+      "screens": 1,
+      "tags": ["iPhone", "Artistic", "Single"],
+      "thumbnail": "/mockups/thumbs/artistic-iphone-3.jpg",
+      "psd": "/mockups/psds/artistic-iphone-3.psd",
+      "fileSize": "144MB",
+      "featured": false
+    },
+    {
+      "id": "artistic-iphone-4",
+      "name": "Artistic iPhone #4",
+      "description": "iPhone on rock with artistic creative styling",
+      "screens": 1,
+      "tags": ["iPhone", "Artistic", "Single"],
+      "thumbnail": "/mockups/thumbs/artistic-iphone-4.jpg",
+      "psd": "/mockups/psds/artistic-iphone-4.psd",
+      "fileSize": "77MB",
+      "featured": false
+    },
+    {
+      "id": "double-android-1",
+      "name": "Double Android #1",
+      "description": "Two Android phones side by side with minimal clean styling",
+      "screens": 2,
+      "tags": ["Android", "Minimal", "Double"],
+      "thumbnail": "/mockups/thumbs/double-android-1.jpg",
+      "psd": "/mockups/psds/double-android-1.psd",
+      "fileSize": "84MB",
+      "featured": false
+    }
+  ]
+}
