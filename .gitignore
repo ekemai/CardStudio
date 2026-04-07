@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# PSD files — hosted on GitHub Releases
+public/mockups/psds/

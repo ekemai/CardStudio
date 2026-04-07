@@ -7,7 +7,7 @@
       "screens": 1,
       "tags": ["iPhone", "Minimal", "Single"],
       "thumbnail": "/mockups/thumbs/floating-iphone.jpg",
-      "psd": "/mockups/psds/floating-iphone.psd",
+      "psd": "https://github.com/ekemai/CardStudio/releases/download/mockup-assets-v1/floating-iphone.psd",
       "fileSize": "96MB",
       "featured": false,
       "screenRegion": [[0.3083, 0.305], [0.482, 0.1674], [0.6979, 0.6848], [0.5277, 0.828]]
@@ -19,7 +19,7 @@
       "screens": 1,
       "tags": ["iPhone", "Minimal", "With Hand"],
       "thumbnail": "/mockups/thumbs/iphone-hand-1.jpg",
-      "psd": "/mockups/psds/iphone-hand-1.psd",
+      "psd": "https://github.com/ekemai/CardStudio/releases/download/mockup-assets-v1/iphone-hand-1.psd",
       "fileSize": "78MB",
       "featured": false
     },
@@ -30,7 +30,7 @@
       "screens": 1,
       "tags": ["iPhone", "Artistic", "With Hand"],
       "thumbnail": "/mockups/thumbs/iphone-hand-2.jpg",
-      "psd": "/mockups/psds/iphone-hand-2.psd",
+      "psd": "https://github.com/ekemai/CardStudio/releases/download/mockup-assets-v1/iphone-hand-2.psd",
       "fileSize": "38MB",
       "featured": false
     },
@@ -41,7 +41,7 @@
       "screens": 2,
       "tags": ["iPhone", "Minimal", "Double"],
       "thumbnail": "/mockups/thumbs/double-iphone-1.jpg",
-      "psd": "/mockups/psds/double-iphone-1.psd",
+      "psd": "https://github.com/ekemai/CardStudio/releases/download/mockup-assets-v1/double-iphone-1.psd",
       "fileSize": "52MB",
       "featured": false
     },
@@ -52,7 +52,7 @@
       "screens": 1,
       "tags": ["iPhone", "Artistic", "Single"],
       "thumbnail": "/mockups/thumbs/artistic-iphone-1.jpg",
-      "psd": "/mockups/psds/artistic-iphone-1.psd",
+      "psd": "https://github.com/ekemai/CardStudio/releases/download/mockup-assets-v1/artistic-iphone-1.psd",
       "fileSize": "159MB",
       "featured": false
     },
@@ -63,7 +63,7 @@
       "screens": 1,
       "tags": ["iPhone", "Artistic", "Minimal", "Single"],
       "thumbnail": "/mockups/thumbs/artistic-iphone-2.jpg",
-      "psd": "/mockups/psds/artistic-iphone-2.psd",
+      "psd": "https://github.com/ekemai/CardStudio/releases/download/mockup-assets-v1/artistic-iphone-2.psd",
       "fileSize": "288MB",
       "featured": false
     },
@@ -74,7 +74,7 @@
       "screens": 1,
       "tags": ["iPhone", "Artistic", "Single"],
       "thumbnail": "/mockups/thumbs/artistic-iphone-3.jpg",
-      "psd": "/mockups/psds/artistic-iphone-3.psd",
+      "psd": "https://github.com/ekemai/CardStudio/releases/download/mockup-assets-v1/artistic-iphone-3.psd",
       "fileSize": "144MB",
       "featured": false
     },
@@ -85,7 +85,7 @@
       "screens": 1,
       "tags": ["iPhone", "Artistic", "Single"],
       "thumbnail": "/mockups/thumbs/artistic-iphone-4.jpg",
-      "psd": "/mockups/psds/artistic-iphone-4.psd",
+      "psd": "https://github.com/ekemai/CardStudio/releases/download/mockup-assets-v1/artistic-iphone-4.psd",
       "fileSize": "77MB",
       "featured": false
     },
@@ -96,7 +96,7 @@
       "screens": 2,
       "tags": ["Android", "Minimal", "Double"],
       "thumbnail": "/mockups/thumbs/double-android-1.jpg",
-      "psd": "/mockups/psds/double-android-1.psd",
+      "psd": "https://github.com/ekemai/CardStudio/releases/download/mockup-assets-v1/double-android-1.psd",
       "fileSize": "84MB",
       "featured": false
     }
