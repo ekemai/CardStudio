@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from 'react'
 import { PRESETS, PRESET_KEYS } from '../presets'
 import { BackgroundSettings, BgMode } from '../background'
+import { DeviceMode, DEVICE_MODES, MOCKUPS } from '../modes'
 
 const ACCEPTED_TYPES = ['image/png', 'image/jpeg', 'image/webp']
 
@@ -89,6 +90,8 @@ function UploadZone({ label, image, onImage }: UploadZoneProps) {
   )
 }
 
+// ── Card preset icons ────────────────────────────────────────────────
+
 const PRESET_ICONS: Record<string, React.ReactNode> = {
   hero: (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="h-5 w-5">
@@ -126,7 +129,7 @@ const PRESET_ICONS: Record<string, React.ReactNode> = {
   ),
 }
 
-function ShotPresets({
+function CardShotPresets({
   activePreset,
   onPreset,
 }: {
@@ -164,6 +167,49 @@ function ShotPresets({
   )
 }
 
+// ── Mockup picker ────────────────────────────────────────────────────
+
+function MockupPicker({
+  activeMockup,
+  onMockup,
+}: {
+  activeMockup: string
+  onMockup: (id: string) => void
+}) {
+  return (
+    <div className="mt-8">
+      <span className="text-xs font-medium uppercase tracking-wider text-zinc-400">
+        Mockup Style
+      </span>
+      <div className="mt-3 grid grid-cols-2 gap-2">
+        {MOCKUPS.map(m => {
+          const active = m.id === activeMockup
+          return (
+            <button
+              key={m.id}
+              onClick={() => onMockup(m.id)}
+              className={`flex flex-col items-center gap-2 rounded-lg border p-2 transition-colors ${
+                active
+                  ? 'border-indigo-500 bg-indigo-500/10 text-white'
+                  : 'border-white/10 bg-white/[0.03] text-zinc-400 hover:border-white/20 hover:text-zinc-200'
+              }`}
+            >
+              <img
+                src={m.src}
+                alt={m.name}
+                className="h-20 w-auto object-contain opacity-70"
+              />
+              <span className="text-xs font-medium">{m.name}</span>
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+// ── Background controls ──────────────────────────────────────────────
+
 const BG_MODES: { key: BgMode; label: string }[] = [
   { key: 'solid', label: 'Solid' },
   { key: 'gradient', label: 'Gradient' },
@@ -177,7 +223,7 @@ function BgSlider({ label, value, min, max, step = 0.01, onChange }: {
     <div className="flex flex-col gap-1">
       <div className="flex items-center justify-between">
         <span className="text-[11px] text-zinc-400">{label}</span>
-        <span className="text-[11px] tabular-nums text-zinc-500">{value.toFixed(0)}°</span>
+        <span className="text-[11px] tabular-nums text-zinc-500">{value.toFixed(0)}{'\u00B0'}</span>
       </div>
       <input
         type="range" min={min} max={max} step={step} value={value}
@@ -200,12 +246,20 @@ function BgColorPicker({ label, value, onChange }: { label: string; value: strin
   )
 }
 
+// ── Main sidebar ─────────────────────────────────────────────────────
+
 interface SidebarProps {
+  mode: DeviceMode
+  onMode: (m: DeviceMode) => void
   frontImage: string | null
   backImage: string | null
   onFrontImage: (img: string | null) => void
   onBackImage: (img: string | null) => void
   onSwap: () => void
+  screenshotImage: string | null
+  onScreenshotImage: (img: string | null) => void
+  activeMockup: string
+  onMockup: (id: string) => void
   activePreset: string
   onPreset: (key: string) => void
   background: BackgroundSettings
@@ -213,11 +267,17 @@ interface SidebarProps {
 }
 
 const Sidebar: React.FC<SidebarProps> = ({
+  mode,
+  onMode,
   frontImage,
   backImage,
   onFrontImage,
   onBackImage,
   onSwap,
+  screenshotImage,
+  onScreenshotImage,
+  activeMockup,
+  onMockup,
   activePreset,
   onPreset,
   background,
@@ -229,23 +289,53 @@ const Sidebar: React.FC<SidebarProps> = ({
         Xe Card Studio
       </h1>
 
-      <div className="mt-8 flex flex-col gap-3">
-        <UploadZone label="Default Xe Card" image={frontImage} onImage={onFrontImage} />
-
-        <button
-          onClick={onSwap}
-          disabled={!frontImage && !backImage}
-          className="self-center rounded-md border border-white/10 px-3 py-1 text-xs text-zinc-400 transition-colors hover:bg-white/5 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed"
-        >
-          ↕ Swap
-        </button>
-
-        <UploadZone label="Custom Back Face" image={backImage} onImage={onBackImage} />
+      {/* Mode switcher */}
+      <div className="mt-6 flex rounded-lg border border-white/10 overflow-hidden">
+        {DEVICE_MODES.map(m => (
+          <button
+            key={m.key}
+            onClick={() => onMode(m.key)}
+            className={`flex-1 py-2 text-[11px] font-medium transition-colors ${
+              mode === m.key
+                ? 'bg-indigo-500/20 text-indigo-300'
+                : 'text-zinc-500 hover:text-zinc-300'
+            }`}
+          >
+            {m.label}
+          </button>
+        ))}
       </div>
 
-      <ShotPresets activePreset={activePreset} onPreset={onPreset} />
+      {/* ── Card mode ── */}
+      {mode === 'card' && (
+        <>
+          <div className="mt-8 flex flex-col gap-3">
+            <UploadZone label="Default Xe Card" image={frontImage} onImage={onFrontImage} />
+            <button
+              onClick={onSwap}
+              disabled={!frontImage && !backImage}
+              className="self-center rounded-md border border-white/10 px-3 py-1 text-xs text-zinc-400 transition-colors hover:bg-white/5 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              {'\u2195'} Swap
+            </button>
+            <UploadZone label="Custom Back Face" image={backImage} onImage={onBackImage} />
+          </div>
 
-      {/* Background — always expanded */}
+          <CardShotPresets activePreset={activePreset} onPreset={onPreset} />
+        </>
+      )}
+
+      {/* ── Phone mode ── */}
+      {mode === 'phone' && (
+        <>
+          <MockupPicker activeMockup={activeMockup} onMockup={onMockup} />
+          <div className="mt-6">
+            <UploadZone label="App Screenshot" image={screenshotImage} onImage={onScreenshotImage} />
+          </div>
+        </>
+      )}
+
+      {/* Background — always shown */}
       <div className="mt-8">
         <span className="text-xs font-medium uppercase tracking-wider text-zinc-400">
           Background
@@ -278,7 +368,6 @@ const Sidebar: React.FC<SidebarProps> = ({
 
           {background.mode === 'gradient' && (
             <div className="flex flex-col gap-3">
-              {/* Gradient preview bar with color pickers on each end */}
               <div className="flex flex-col gap-2">
                 <div className="flex items-center gap-2">
                   <input
@@ -300,7 +389,6 @@ const Sidebar: React.FC<SidebarProps> = ({
                     className="h-6 w-6 cursor-pointer rounded border border-white/10 bg-transparent [&::-webkit-color-swatch-wrapper]:p-0 [&::-webkit-color-swatch]:rounded [&::-webkit-color-swatch]:border-none"
                   />
                 </div>
-                {/* Midpoint slider under the bar */}
                 <div className="flex flex-col gap-1">
                   <div className="flex items-center justify-between">
                     <span className="text-[11px] text-zinc-400">Balance</span>

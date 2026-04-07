@@ -140,7 +140,6 @@ function makeRoundedRectShape() {
   return shape
 }
 
-// Build the card body geometry once
 const cardBodyGeo = (() => {
   const shape = makeRoundedRectShape()
   const geo = new THREE.ExtrudeGeometry(shape, {
@@ -152,7 +151,6 @@ const cardBodyGeo = (() => {
   return geo
 })()
 
-// Build a flat rounded-rect shape geometry for texture faces
 const cardFaceGeo = (() => {
   const shape = makeRoundedRectShape()
   const geo = new THREE.ShapeGeometry(shape, 8)
@@ -194,7 +192,6 @@ function CardMesh({
   const frontRef = useRef<THREE.Mesh>(null)
   const backRef = useRef<THREE.Mesh>(null)
 
-  // Dispose materials on unmount
   useEffect(() => {
     return () => {
       if (bodyRef.current) (bodyRef.current.material as THREE.Material).dispose()
@@ -205,7 +202,6 @@ function CardMesh({
 
   return (
     <group>
-      {/* Card body / edges — higher metalness for realistic edge reflections */}
       <mesh ref={bodyRef} geometry={cardBodyGeo} castShadow receiveShadow>
         <meshPhysicalMaterial
           {...mat}
@@ -223,7 +219,6 @@ function CardMesh({
         />
       </mesh>
 
-      {/* Front face */}
       <mesh ref={frontRef} geometry={cardFaceGeo} position={[0, 0, FACE_Z]} castShadow>
         <meshPhysicalMaterial
           {...mat}
@@ -237,7 +232,6 @@ function CardMesh({
         />
       </mesh>
 
-      {/* Back face */}
       <mesh ref={backRef} geometry={cardFaceGeo} position={[0, 0, -FACE_Z]} rotation={[0, Math.PI, 0]} castShadow>
         <meshPhysicalMaterial
           {...mat}
@@ -254,7 +248,8 @@ function CardMesh({
   )
 }
 
-// Shared pausable clock — accumulates time only when not paused
+// ── Animation helpers ────────────────────────────────────────────────
+
 function usePausableClock(paused: boolean) {
   const elapsed = useRef(0)
   const lastReal = useRef(performance.now())
@@ -315,7 +310,7 @@ function CreditCard({ frontImage, backImage, activePreset, material, effects, pa
   const frontTex = useDataTexture(frontImage)
   const backTex = useDataTexture(backImage)
 
-  const preset = PRESETS[activePreset]
+  const preset = PRESETS[activePreset] ?? PRESETS.hero
 
   const spring = useSpring({
     rotation: preset.rotation,
@@ -365,7 +360,7 @@ function CreditCard({ frontImage, backImage, activePreset, material, effects, pa
   )
 }
 
-// ── Studio Lighting with RectAreaLights ──────────────────────────────
+// ── Studio Lighting ──────────────────────────────────────────────────
 
 function StudioLighting({ settings }: { settings: LightingSettings }) {
   const keyRef = useRef<THREE.RectAreaLight>(null)
@@ -373,7 +368,6 @@ function StudioLighting({ settings }: { settings: LightingSettings }) {
   const rimRef = useRef<THREE.RectAreaLight>(null)
   const spotRef = useRef<THREE.SpotLight>(null)
 
-  // Dispose lights on unmount
   useEffect(() => {
     return () => {
       keyRef.current?.dispose()
@@ -386,8 +380,6 @@ function StudioLighting({ settings }: { settings: LightingSettings }) {
   return (
     <>
       <ambientLight intensity={settings.ambientIntensity * 0.5} />
-
-      {/* Main studio panel — large soft key light above and in front */}
       <rectAreaLight
         ref={keyRef}
         color={settings.key.color}
@@ -397,8 +389,6 @@ function StudioLighting({ settings }: { settings: LightingSettings }) {
         position={[1, settings.key.height, 4]}
         rotation={[-0.3, 0.2, 0]}
       />
-
-      {/* Fill panel — smaller, from the left */}
       <rectAreaLight
         ref={fillRef}
         color={settings.fill.color}
@@ -408,8 +398,6 @@ function StudioLighting({ settings }: { settings: LightingSettings }) {
         position={[-3, settings.fill.height, 2]}
         rotation={[0, 0.8, 0]}
       />
-
-      {/* Rim / edge separation — thin panel behind */}
       <rectAreaLight
         ref={rimRef}
         color={settings.rim.color}
@@ -419,8 +407,6 @@ function StudioLighting({ settings }: { settings: LightingSettings }) {
         position={[0, settings.rim.height, -3]}
         rotation={[0, Math.PI, 0]}
       />
-
-      {/* SpotLight for sharp contact shadows */}
       <spotLight
         ref={spotRef}
         color="#ffffff"
@@ -434,14 +420,10 @@ function StudioLighting({ settings }: { settings: LightingSettings }) {
         shadow-bias={-0.0001}
         shadow-radius={4}
       />
-
-      {/* Environment map for reflections */}
       {settings.envMap && <Environment preset="studio" background={false} />}
     </>
   )
 }
-
-// ── Shadow-catching ground plane ─────────────────────────────────────
 
 function ShadowCatcher({ visible }: { visible: boolean }) {
   if (!visible) return null
@@ -453,7 +435,7 @@ function ShadowCatcher({ visible }: { visible: boolean }) {
   )
 }
 
-// ── Post-processing effects ──────────────────────────────────────────
+// ── Post-processing ──────────────────────────────────────────────────
 
 const chromaticOffset = new THREE.Vector2(0.0005, 0.0005)
 
@@ -461,32 +443,13 @@ function PostEffects({ grain }: { grain: number }) {
   return (
     <EffectComposer multisampling={0}>
       <SMAA />
-      <Bloom
-        intensity={0.4}
-        luminanceThreshold={0.9}
-        luminanceSmoothing={0.4}
-        mipmapBlur
-      />
-      <Vignette
-        offset={0.3}
-        darkness={0.5}
-        blendFunction={BlendFunction.NORMAL}
-      />
-      <ChromaticAberration
-        offset={chromaticOffset}
-        radialModulation={false}
-        modulationOffset={0.0}
-      />
-      <Noise
-        premultiply
-        blendFunction={BlendFunction.MULTIPLY}
-        opacity={grain}
-      />
+      <Bloom intensity={0.4} luminanceThreshold={0.9} luminanceSmoothing={0.4} mipmapBlur />
+      <Vignette offset={0.3} darkness={0.5} blendFunction={BlendFunction.NORMAL} />
+      <ChromaticAberration offset={chromaticOffset} radialModulation={false} modulationOffset={0.0} />
+      <Noise premultiply blendFunction={BlendFunction.MULTIPLY} opacity={grain} />
     </EffectComposer>
   )
 }
-
-// ── Renderer configuration ───────────────────────────────────────────
 
 function RendererConfig() {
   const { gl } = useThree()
@@ -575,7 +538,7 @@ function ResetPlane({ onReset }: { onReset: () => void }) {
   )
 }
 
-// ── Main Viewport component ──────────────────────────────────────────
+// ── Main Viewport component (Card mode only) ─────────────────────────
 
 interface ViewportProps {
   frontImage: string | null
