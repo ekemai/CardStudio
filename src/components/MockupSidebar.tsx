@@ -21,7 +21,7 @@ function MockupCard({
   mockup,
   onSelect,
   onPreview,
-  onDownload,
+  onDownload: _,
   featured,
 }: {
   mockup: Mockup

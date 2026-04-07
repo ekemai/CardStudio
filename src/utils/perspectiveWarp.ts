@@ -130,7 +130,7 @@ function drawTriangle(
  * The radius is relative to the shorter dimension of the image.
  */
 function roundImage(
-  img: CanvasImageSource,
+  img: HTMLImageElement,
   radiusFraction = 0.06,
 ): HTMLCanvasElement {
   const w = img.naturalWidth
