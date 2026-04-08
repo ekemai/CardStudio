@@ -197,3 +197,39 @@ export function compositeMockup(
 
   return canvas
 }
+
+/**
+ * Composite multiple screenshots onto a mockup image.
+ * Each screen region gets its own screenshot.
+ * Returns a canvas with the final result.
+ */
+export function compositeMultiMockup(
+  mockupImg: HTMLImageElement,
+  screenImgs: (HTMLImageElement | null)[],
+  screenRegions: ScreenRegion[],
+  cornerRadius = 0.12,
+): HTMLCanvasElement {
+  const canvas = document.createElement('canvas')
+  canvas.width = mockupImg.naturalWidth
+  canvas.height = mockupImg.naturalHeight
+  const ctx = canvas.getContext('2d')!
+
+  // Draw the mockup background
+  ctx.drawImage(mockupImg, 0, 0)
+
+  // Draw each screen
+  screenRegions.forEach((region, i) => {
+    const img = screenImgs[i]
+    if (!img) return
+
+    const rounded = roundImage(img, cornerRadius)
+    const pixelRegion: ScreenRegion = region.map(([x, y]) => [
+      x * canvas.width,
+      y * canvas.height,
+    ]) as ScreenRegion
+
+    drawPerspectiveWarp(ctx, rounded, pixelRegion, rounded.width, rounded.height)
+  })
+
+  return canvas
+}

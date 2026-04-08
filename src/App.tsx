@@ -158,10 +158,10 @@ const App: React.FC = () => {
             />
           </div>
 
-          {selectedMockup?.screenRegion ? (
+          {selectedMockup ? (
             <MockupEditor mockup={selectedMockup} onDownload={handleDownload} />
           ) : (
-            <MockupViewport mockup={selectedMockup} onDownload={handleDownload} />
+            <MockupViewport mockup={null} onDownload={handleDownload} />
           )}
         </>
       )}

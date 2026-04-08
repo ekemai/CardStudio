@@ -15,6 +15,9 @@ export interface Mockup {
   fileSize: string
   featured: boolean
   screenRegion?: ScreenRegion
+  screenRegions?: ScreenRegion[]
+  cornerRadius?: number
+  source?: string
 }
 
 export interface MockupsData {

@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { Mockup, ScreenRegion } from '../types/mockup'
-import { compositeMockup } from '../utils/perspectiveWarp'
+import { compositeMultiMockup } from '../utils/perspectiveWarp'
 
 interface MockupEditorProps {
   mockup: Mockup
@@ -17,23 +17,35 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   })
 }
 
+const DEFAULT_REGION: ScreenRegion = [[0.35, 0.1], [0.6, 0.15], [0.55, 0.75], [0.3, 0.7]]
 const CORNER_LABELS = ['TL', 'TR', 'BR', 'BL'] as const
 const CORNER_RADIUS = 8
 const MIN_ZOOM = 0.5
 const MAX_ZOOM = 5
 
+function getInitialRegions(mockup: Mockup): ScreenRegion[] {
+  if (mockup.screenRegions) return mockup.screenRegions
+  if (mockup.screenRegion) return [mockup.screenRegion]
+  return [DEFAULT_REGION]
+}
+
 const MockupEditor: React.FC<MockupEditorProps> = ({ mockup, onDownload }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const overlayRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
-  const [screenImage, setScreenImage] = useState<string | null>(null)
+
+  const initialRegions = getInitialRegions(mockup)
+  const screenCount = initialRegions.length
+
+  const [activeScreen, setActiveScreen] = useState(0)
+  const [screenImages, setScreenImages] = useState<(string | null)[]>(() => Array(screenCount).fill(null))
   const [mockupImg, setMockupImg] = useState<HTMLImageElement | null>(null)
-  const [screenImg, setScreenImg] = useState<HTMLImageElement | null>(null)
+  const [screenImgs, setScreenImgs] = useState<(HTMLImageElement | null)[]>(() => Array(screenCount).fill(null))
   const [exporting, setExporting] = useState(false)
   const [calibrating, setCalibrating] = useState(false)
-  const [corners, setCorners] = useState<ScreenRegion>(
-    mockup.screenRegion || [[0.35, 0.1], [0.6, 0.15], [0.55, 0.75], [0.3, 0.7]],
-  )
+  const [cornerRadius, setCornerRadius] = useState(mockup.cornerRadius ?? 0.12)
+  const [allCorners, setAllCorners] = useState<ScreenRegion[]>(() => initialRegions)
+  const [copiedTooltip, setCopiedTooltip] = useState(false)
   const [dragging, setDragging] = useState<number | null>(null)
   const [zoom, setZoom] = useState(1)
   const [pan, setPan] = useState<[number, number]>([0, 0])
@@ -41,26 +53,32 @@ const MockupEditor: React.FC<MockupEditorProps> = ({ mockup, onDownload }) => {
   const panStart = useRef<[number, number]>([0, 0])
   const panOffset = useRef<[number, number]>([0, 0])
 
+  const corners = allCorners[activeScreen]
+
   // Load mockup image
   useEffect(() => {
     loadImage(mockup.thumbnail).then(setMockupImg)
   }, [mockup.thumbnail])
 
-  // Reset corners and zoom when mockup changes
+  // Reset state when mockup changes
   useEffect(() => {
-    setCorners(mockup.screenRegion || [[0.35, 0.1], [0.6, 0.15], [0.55, 0.75], [0.3, 0.7]])
+    const regions = getInitialRegions(mockup)
+    const count = regions.length
+    setAllCorners(regions)
+    setActiveScreen(0)
+    setScreenImages(Array(count).fill(null))
+    setScreenImgs(Array(count).fill(null))
+    setCornerRadius(mockup.cornerRadius ?? 0.12)
     setZoom(1)
     setPan([0, 0])
   }, [mockup.id])
 
-  // Load screen image when user uploads one
+  // Load screen images when user uploads
   useEffect(() => {
-    if (!screenImage) {
-      setScreenImg(null)
-      return
-    }
-    loadImage(screenImage).then(setScreenImg)
-  }, [screenImage])
+    Promise.all(
+      screenImages.map(url => url ? loadImage(url) : Promise.resolve(null)),
+    ).then(setScreenImgs)
+  }, [screenImages])
 
   // Render composite whenever images or corners change
   useEffect(() => {
@@ -71,13 +89,14 @@ const MockupEditor: React.FC<MockupEditorProps> = ({ mockup, onDownload }) => {
     canvas.width = mockupImg.naturalWidth
     canvas.height = mockupImg.naturalHeight
 
-    if (screenImg) {
-      const result = compositeMockup(mockupImg, screenImg, corners)
+    const hasAny = screenImgs.some(img => img !== null)
+    if (hasAny) {
+      const result = compositeMultiMockup(mockupImg, screenImgs, allCorners, cornerRadius)
       ctx.drawImage(result, 0, 0)
     } else {
       ctx.drawImage(mockupImg, 0, 0)
     }
-  }, [mockupImg, screenImg, corners])
+  }, [mockupImg, screenImgs, allCorners, cornerRadius])
 
   // Convert mouse position to normalized coordinates relative to the canvas display
   const mouseToNormalized = useCallback(
@@ -98,7 +117,7 @@ const MockupEditor: React.FC<MockupEditorProps> = ({ mockup, onDownload }) => {
       const pos = mouseToNormalized(e.clientX, e.clientY)
       if (!pos) return
 
-      // Find closest corner
+      // Find closest corner on active screen
       let closest = 0
       let minDist = Infinity
       corners.forEach(([cx, cy], i) => {
@@ -123,13 +142,15 @@ const MockupEditor: React.FC<MockupEditorProps> = ({ mockup, onDownload }) => {
       const pos = mouseToNormalized(e.clientX, e.clientY)
       if (!pos) return
 
-      setCorners(prev => {
-        const next = [...prev] as unknown as ScreenRegion
-        next[dragging] = pos
+      setAllCorners(prev => {
+        const next = [...prev]
+        const region = [...next[activeScreen]] as unknown as ScreenRegion
+        region[dragging] = pos
+        next[activeScreen] = region
         return next
       })
     },
-    [dragging, mouseToNormalized],
+    [dragging, activeScreen, mouseToNormalized],
   )
 
   const handlePointerUp = useCallback(() => {
@@ -174,41 +195,78 @@ const MockupEditor: React.FC<MockupEditorProps> = ({ mockup, onDownload }) => {
     const file = e.target.files?.[0]
     if (!file) return
     const url = URL.createObjectURL(file)
-    setScreenImage(url)
-  }, [])
+    setScreenImages(prev => {
+      const next = [...prev]
+      next[activeScreen] = url
+      return next
+    })
+  }, [activeScreen])
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault()
     const file = e.dataTransfer.files?.[0]
     if (!file || !file.type.startsWith('image/')) return
     const url = URL.createObjectURL(file)
-    setScreenImage(url)
-  }, [])
+    setScreenImages(prev => {
+      const next = [...prev]
+      next[activeScreen] = url
+      return next
+    })
+  }, [activeScreen])
 
   const handleExport = useCallback(async () => {
-    const canvas = canvasRef.current
-    if (!canvas) return
     setExporting(true)
+    try {
+      // Load high-res source if available, otherwise fall back to thumbnail
+      const sourceImg = mockup.source
+        ? await loadImage(mockup.source).catch(() => mockupImg)
+        : mockupImg
+      if (!sourceImg) return
 
-    canvas.toBlob(
-      blob => {
-        if (!blob) return
-        const url = URL.createObjectURL(blob)
-        const link = document.createElement('a')
-        link.href = url
-        link.download = `${mockup.id}-composite.png`
-        link.click()
-        URL.revokeObjectURL(url)
-        setExporting(false)
-      },
-      'image/png',
-    )
-  }, [mockup.id])
+      const result = compositeMultiMockup(sourceImg, screenImgs, allCorners, cornerRadius)
+
+      result.toBlob(
+        blob => {
+          if (!blob) return
+          const url = URL.createObjectURL(blob)
+          const link = document.createElement('a')
+          link.href = url
+          link.download = `${mockup.id}-composite.png`
+          link.click()
+          URL.revokeObjectURL(url)
+          setExporting(false)
+        },
+        'image/png',
+      )
+    } catch {
+      setExporting(false)
+    }
+  }, [mockup.id, mockup.source, mockupImg, screenImgs, allCorners, cornerRadius])
 
   const copyCorners = useCallback(() => {
-    const json = JSON.stringify(corners.map(([x, y]) => [+x.toFixed(4), +y.toFixed(4)]))
-    navigator.clipboard.writeText(json)
-  }, [corners])
+    if (screenCount > 1) {
+      const json = JSON.stringify(
+        allCorners.map(region => region.map(([x, y]) => [+x.toFixed(4), +y.toFixed(4)])),
+      )
+      navigator.clipboard.writeText(json)
+    } else {
+      const json = JSON.stringify(corners.map(([x, y]) => [+x.toFixed(4), +y.toFixed(4)]))
+      navigator.clipboard.writeText(json)
+    }
+    setCopiedTooltip(true)
+    setTimeout(() => setCopiedTooltip(false), 1500)
+  }, [corners, allCorners, screenCount])
+
+  const handleClearScreen = useCallback(() => {
+    setScreenImages(prev => {
+      const next = [...prev]
+      next[activeScreen] = null
+      return next
+    })
+  }, [activeScreen])
+
+  const hasAnyScreenImage = screenImages.some(s => s !== null)
+  const currentScreenImage = screenImages[activeScreen]
 
   return (
     <main
@@ -219,7 +277,10 @@ const MockupEditor: React.FC<MockupEditorProps> = ({ mockup, onDownload }) => {
       {/* Fidelity note */}
       <div className="absolute left-1/2 top-4 z-10 -translate-x-1/2 rounded-lg border border-white/10 bg-black/60 px-4 py-2.5 text-center backdrop-blur-sm">
         <p className="text-xs text-zinc-300">
-          For higher accuracy and control over shadows, lighting, and background colours, download the PSD file and make changes in Photoshop.
+          Preview is shown at reduced quality. All exports will download at full resolution (6000 x 4500px).
+        </p>
+        <p className="mt-1 text-xs text-zinc-500">
+          For full control over shadows, lighting, and backgrounds, download the PSD and edit in Photoshop.
         </p>
       </div>
 
@@ -257,17 +318,19 @@ const MockupEditor: React.FC<MockupEditorProps> = ({ mockup, onDownload }) => {
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
           >
-            {/* Lines connecting corners */}
-            <svg className="absolute inset-0 h-full w-full" viewBox="0 0 1 1" preserveAspectRatio="none">
-              <polygon
-                points={corners.map(([x, y]) => `${x},${y}`).join(' ')}
-                fill="rgba(0,102,255,0.08)"
-                stroke="rgba(0,102,255,0.6)"
-                strokeWidth="0.002"
-              />
-            </svg>
+            {/* Show all screen regions — active highlighted, others dimmed */}
+            {allCorners.map((region, screenIdx) => (
+              <svg key={screenIdx} className="absolute inset-0 h-full w-full" viewBox="0 0 1 1" preserveAspectRatio="none">
+                <polygon
+                  points={region.map(([x, y]) => `${x},${y}`).join(' ')}
+                  fill={screenIdx === activeScreen ? 'rgba(0,102,255,0.08)' : 'rgba(255,255,255,0.03)'}
+                  stroke={screenIdx === activeScreen ? 'rgba(0,102,255,0.6)' : 'rgba(255,255,255,0.2)'}
+                  strokeWidth="0.002"
+                />
+              </svg>
+            ))}
 
-            {/* Corner handles */}
+            {/* Corner handles — only for active screen */}
             {corners.map(([x, y], i) => (
               <div
                 key={i}
@@ -311,16 +374,56 @@ const MockupEditor: React.FC<MockupEditorProps> = ({ mockup, onDownload }) => {
         <div>
           <h2 className="text-lg font-semibold text-white">{mockup.name}</h2>
           <p className="mt-0.5 text-sm text-zinc-300">{mockup.description}</p>
+
+          {/* Screen selector for multi-screen mockups */}
+          {screenCount > 1 && (
+            <div className="mt-2 flex gap-2">
+              {Array.from({ length: screenCount }, (_, i) => (
+                <button
+                  key={i}
+                  onClick={() => setActiveScreen(i)}
+                  className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                    i === activeScreen
+                      ? 'bg-[#0066FF] text-white'
+                      : 'bg-white/10 text-zinc-300 hover:bg-white/20'
+                  }`}
+                >
+                  Screen {i + 1}
+                  {screenImages[i] ? ' \u2713' : ''}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Corner radius slider */}
+          {hasAnyScreenImage && (
+            <div className="mt-2 flex items-center gap-3">
+              <span className="text-xs text-zinc-400">Corner Radius</span>
+              <input
+                type="range"
+                min="0"
+                max="0.25"
+                step="0.005"
+                value={cornerRadius}
+                onChange={e => setCornerRadius(parseFloat(e.target.value))}
+                className="h-1 w-28 cursor-pointer appearance-none rounded-full bg-white/10 accent-[#0066FF] [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#0066FF]"
+              />
+              <span className="w-8 text-xs tabular-nums text-zinc-500">{Math.round(cornerRadius * 100)}%</span>
+            </div>
+          )}
         </div>
 
         <div className="flex shrink-0 items-center gap-3">
           {/* Calibrate toggle */}
           <button
-            onClick={() => setCalibrating(c => !c)}
+            onClick={() => hasAnyScreenImage && setCalibrating(c => !c)}
+            disabled={!hasAnyScreenImage}
             className={`flex items-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-medium transition-colors ${
-              calibrating
-                ? 'border-[#0066FF]/50 bg-[#0066FF]/10 text-[#0066FF]'
-                : 'border-white/10 bg-white/5 text-white hover:bg-white/10'
+              !hasAnyScreenImage
+                ? 'border-white/5 bg-white/[0.02] text-zinc-600 cursor-not-allowed'
+                : calibrating
+                  ? 'border-[#0066FF]/50 bg-[#0066FF]/10 text-[#0066FF]'
+                  : 'border-white/10 bg-white/5 text-white hover:bg-white/10'
             }`}
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-4 w-4">
@@ -329,11 +432,16 @@ const MockupEditor: React.FC<MockupEditorProps> = ({ mockup, onDownload }) => {
             {calibrating ? 'Done Calibrating' : 'Calibrate Screen'}
           </button>
 
-          {/* Copy corners JSON (only in calibration mode) */}
-          {calibrating && (
+          {/* Copy corners JSON */}
+          <div className="relative">
             <button
-              onClick={copyCorners}
-              className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-white/10"
+              onClick={() => hasAnyScreenImage && copyCorners()}
+              disabled={!hasAnyScreenImage}
+              className={`flex items-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-medium transition-colors ${
+                !hasAnyScreenImage
+                  ? 'border-white/5 bg-white/[0.02] text-zinc-600 cursor-not-allowed'
+                  : 'border-white/10 bg-white/5 text-white hover:bg-white/10'
+              }`}
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-4 w-4">
                 <rect x="9" y="9" width="13" height="13" rx="2" />
@@ -341,21 +449,29 @@ const MockupEditor: React.FC<MockupEditorProps> = ({ mockup, onDownload }) => {
               </svg>
               Copy Coords
             </button>
-          )}
+            {copiedTooltip && (
+              <div className="absolute -top-8 left-1/2 -translate-x-1/2 rounded-md bg-white px-2.5 py-1 text-xs font-medium text-black shadow-lg">
+                Copied!
+              </div>
+            )}
+          </div>
 
           {/* Upload screenshot */}
           <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-white/10">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-4 w-4">
               <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
-            {screenImage ? 'Change Screenshot' : 'Add Screenshot'}
+            {currentScreenImage
+              ? (screenCount > 1 ? `Change Screen ${activeScreen + 1}` : 'Change Screenshot')
+              : (screenCount > 1 ? `Add Screen ${activeScreen + 1}` : 'Add Screenshot')
+            }
             <input type="file" accept="image/*" className="hidden" onChange={handleUpload} />
           </label>
 
           {/* Clear screenshot */}
-          {screenImage && (
+          {currentScreenImage && (
             <button
-              onClick={() => setScreenImage(null)}
+              onClick={handleClearScreen}
               className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-white/10"
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-4 w-4">
@@ -366,7 +482,7 @@ const MockupEditor: React.FC<MockupEditorProps> = ({ mockup, onDownload }) => {
           )}
 
           {/* Export composite */}
-          {screenImage && (
+          {hasAnyScreenImage && (
             <button
               onClick={handleExport}
               disabled={exporting}
@@ -392,14 +508,19 @@ const MockupEditor: React.FC<MockupEditorProps> = ({ mockup, onDownload }) => {
         </div>
       </div>
 
-      {/* Drop zone overlay when no screenshot */}
-      {!screenImage && !calibrating && (
+      {/* Drop zone overlay when no screenshot for active screen */}
+      {!currentScreenImage && !calibrating && (
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
           <div className="rounded-2xl border-2 border-dashed border-white/10 bg-black/20 px-10 py-8 text-center backdrop-blur-sm">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="mx-auto mb-3 h-10 w-10 text-zinc-500">
               <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
-            <p className="text-sm text-zinc-400">Drop a screenshot here or use the button below</p>
+            <p className="text-sm text-zinc-400">
+              {screenCount > 1
+                ? `Drop a screenshot for Screen ${activeScreen + 1} or use the button below`
+                : 'Drop a screenshot here or use the button below'
+              }
+            </p>
             <p className="mt-1 text-xs text-zinc-600">Your screen will be placed into the device mockup</p>
           </div>
         </div>
