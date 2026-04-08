@@ -5,7 +5,6 @@ import RightPanel from './components/RightPanel'
 import MockupSidebar from './components/MockupSidebar'
 import MockupViewport from './components/MockupViewport'
 import MockupEditor from './components/MockupEditor'
-import PreviewModal from './components/PreviewModal'
 import Toast from './components/Toast'
 import { DEFAULT_PRESET } from './presets'
 import { DEFAULT_MATERIAL, MaterialSettings } from './materials'
@@ -30,7 +29,6 @@ const App: React.FC = () => {
   // Mockup mode state
   const { mockups, loading, error } = useMockups()
   const [selectedMockup, setSelectedMockup] = useState<Mockup | null>(null)
-  const [previewMockup, setPreviewMockup] = useState<Mockup | null>(null)
   const [toast, setToast] = useState<string | null>(null)
   const [downloadProgress, setDownloadProgress] = useState<number | null>(null)
 
@@ -153,7 +151,6 @@ const App: React.FC = () => {
               loading={loading}
               error={error}
               onSelect={setSelectedMockup}
-              onPreview={setPreviewMockup}
               onDownload={handleDownload}
             />
           </div>
@@ -164,15 +161,6 @@ const App: React.FC = () => {
             <MockupViewport mockup={null} onDownload={handleDownload} />
           )}
         </>
-      )}
-
-      {/* Preview modal */}
-      {previewMockup && (
-        <PreviewModal
-          mockup={previewMockup}
-          onClose={() => setPreviewMockup(null)}
-          onDownload={handleDownload}
-        />
       )}
 
       {/* Toast */}

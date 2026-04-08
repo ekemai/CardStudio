@@ -20,14 +20,12 @@ function SkeletonCard() {
 function MockupCard({
   mockup,
   onSelect,
-  onPreview,
-  onDownload: _,
   featured,
 }: {
   mockup: Mockup
   onSelect: (m: Mockup) => void
-  onPreview: (m: Mockup) => void
-  onDownload: (m: Mockup) => void
+  onPreview?: (m: Mockup) => void
+  onDownload?: (m: Mockup) => void
   featured?: boolean
 }) {
   return (
@@ -51,16 +49,6 @@ function MockupCard({
           alt={mockup.name}
           className="h-full w-full object-contain transition-transform duration-300 group-hover:scale-105"
         />
-
-        {/* Hover overlay */}
-        <div className="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
-          <button
-            onClick={e => { e.stopPropagation(); onPreview(mockup) }}
-            className="rounded-lg bg-white/10 px-3.5 py-2 text-[11px] font-medium text-white backdrop-blur-sm transition-colors hover:bg-white/20"
-          >
-            Preview
-          </button>
-        </div>
       </div>
 
       {/* Info */}
@@ -96,7 +84,6 @@ interface MockupSidebarProps {
   loading: boolean
   error: string | null
   onSelect: (m: Mockup) => void
-  onPreview: (m: Mockup) => void
   onDownload: (m: Mockup) => void
 }
 
@@ -105,7 +92,6 @@ const MockupSidebar: React.FC<MockupSidebarProps> = ({
   loading,
   error,
   onSelect,
-  onPreview,
   onDownload,
 }) => {
   const [search, setSearch] = useState('')
@@ -296,7 +282,7 @@ const MockupSidebar: React.FC<MockupSidebarProps> = ({
                     mockup={m}
                     featured
                     onSelect={onSelect}
-                    onPreview={onPreview}
+
                     onDownload={onDownload}
                   />
                 ))}
@@ -328,7 +314,7 @@ const MockupSidebar: React.FC<MockupSidebarProps> = ({
                     key={m.id}
                     mockup={m}
                     onSelect={onSelect}
-                    onPreview={onPreview}
+
                     onDownload={onDownload}
                   />
                 ))}

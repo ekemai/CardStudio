@@ -351,8 +351,23 @@ const MockupEditor: React.FC<MockupEditorProps> = ({ mockup, onDownload }) => {
             ))}
           </div>
         )}
+
       </div>
       </div>
+
+      {/* Bottom-center upload prompt when no screenshot — outside transform div */}
+      {!currentScreenImage && !calibrating && (
+        <label className="absolute bottom-28 left-1/2 z-10 flex -translate-x-1/2 cursor-pointer items-center gap-2 rounded-lg bg-[#0066FF] px-5 py-2.5 text-sm font-medium text-white shadow-lg transition-colors hover:bg-[#0055DD]">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="h-4 w-4">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 16V4m0 0l-4 4m4-4l4 4M4 20h16" />
+          </svg>
+          {screenCount > 1
+            ? `Drag screenshot or browse — Screen ${activeScreen + 1}`
+            : 'Drag screenshot or browse'
+          }
+          <input type="file" accept="image/*" className="hidden" onChange={handleUpload} />
+        </label>
+      )}
 
       {/* Zoom indicator */}
       {zoom !== 1 && (
@@ -456,17 +471,16 @@ const MockupEditor: React.FC<MockupEditorProps> = ({ mockup, onDownload }) => {
             )}
           </div>
 
-          {/* Upload screenshot */}
-          <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-white/10">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-4 w-4">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-            {currentScreenImage
-              ? (screenCount > 1 ? `Change Screen ${activeScreen + 1}` : 'Change Screenshot')
-              : (screenCount > 1 ? `Add Screen ${activeScreen + 1}` : 'Add Screenshot')
-            }
-            <input type="file" accept="image/*" className="hidden" onChange={handleUpload} />
-          </label>
+          {/* Change screenshot (only shown when one is already added) */}
+          {currentScreenImage && (
+            <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-white/10">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-4 w-4">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              {screenCount > 1 ? `Change Screen ${activeScreen + 1}` : 'Change Screenshot'}
+              <input type="file" accept="image/*" className="hidden" onChange={handleUpload} />
+            </label>
+          )}
 
           {/* Clear screenshot */}
           {currentScreenImage && (
@@ -498,7 +512,7 @@ const MockupEditor: React.FC<MockupEditorProps> = ({ mockup, onDownload }) => {
           {/* Download PSD */}
           <button
             onClick={() => onDownload(mockup)}
-            className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-white/10"
+            className="flex items-center gap-2 rounded-lg bg-[#0066FF] px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#0055DD]"
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-4 w-4">
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -508,23 +522,6 @@ const MockupEditor: React.FC<MockupEditorProps> = ({ mockup, onDownload }) => {
         </div>
       </div>
 
-      {/* Drop zone overlay when no screenshot for active screen */}
-      {!currentScreenImage && !calibrating && (
-        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-          <div className="rounded-2xl border-2 border-dashed border-white/10 bg-black/20 px-10 py-8 text-center backdrop-blur-sm">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="mx-auto mb-3 h-10 w-10 text-zinc-500">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-            <p className="text-sm text-zinc-400">
-              {screenCount > 1
-                ? `Drop a screenshot for Screen ${activeScreen + 1} or use the button below`
-                : 'Drop a screenshot here or use the button below'
-              }
-            </p>
-            <p className="mt-1 text-xs text-zinc-600">Your screen will be placed into the device mockup</p>
-          </div>
-        </div>
-      )}
     </main>
   )
 }
