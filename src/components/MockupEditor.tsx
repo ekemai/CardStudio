@@ -277,10 +277,10 @@ const MockupEditor: React.FC<MockupEditorProps> = ({ mockup, onDownload }) => {
       {/* Fidelity note */}
       <div className="absolute left-1/2 top-4 z-10 -translate-x-1/2 rounded-lg border border-white/10 bg-black/60 px-4 py-2.5 text-center backdrop-blur-sm">
         <p className="text-xs text-zinc-300">
-          Preview is shown at reduced quality. All exports will download at full resolution (6000 x 4500px).
+          For full control over shadows, lighting, and backgrounds, download the PSD and edit in Photoshop.
         </p>
         <p className="mt-1 text-xs text-zinc-500">
-          For full control over shadows, lighting, and backgrounds, download the PSD and edit in Photoshop.
+          Preview is shown at reduced quality. All exports will download at full resolution (6000 x 4500px).
         </p>
       </div>
 
