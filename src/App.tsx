@@ -159,7 +159,7 @@ const App: React.FC = () => {
           </div>
 
           {selectedMockup ? (
-            <MockupEditor mockup={selectedMockup} onDownload={handleDownload} />
+            <MockupEditor key={selectedMockup.id} mockup={selectedMockup} onDownload={handleDownload} />
           ) : (
             <MockupViewport mockup={null} onDownload={handleDownload} />
           )}
